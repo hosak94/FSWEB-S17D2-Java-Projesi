@@ -1,10 +1,7 @@
 package com.workintech.dependencyproject.rest;
 
 import com.workintech.dependencyproject.mapping.DeveloperResponse;
-import com.workintech.dependencyproject.model.Developer;
-import com.workintech.dependencyproject.model.JuniorDeveloper;
-import com.workintech.dependencyproject.model.MidDeveloper;
-import com.workintech.dependencyproject.model.SeniorDeveloper;
+import com.workintech.dependencyproject.model.*;
 import com.workintech.dependencyproject.tax.DeveloperTax;
 import com.workintech.dependencyproject.tax.Taxable;
 import com.workintech.dependencyproject.validation.DeveloperValidation;
@@ -36,62 +33,61 @@ public class DeveloperController {
     }
     @GetMapping("/{id}")
     public DeveloperResponse getById(@PathVariable int id) {
-        if(DeveloperValidation.isIdValid(id)){
-            return new DeveloperResponse(null,"Success",200);
-        }else{
+        if(!DeveloperValidation.isIdValid(id)){
             return new DeveloperResponse(null,"Id is not valid",400);
         }
-
+        if(!developers.containsKey(id)){
+            return new DeveloperResponse(null,"Developer with given id is not exist: "
+                    + id ,400);
+        }
+        return new DeveloperResponse(null,"Success",200);
     }
     @PostMapping("/")
-    public Developer save(@RequestBody Developer developer){
-        Developer savedDeveloper = createDeveloper(developer);
+    public DeveloperResponse save(@RequestBody Developer developer){
+        Developer savedDeveloper = DeveloperrFactory.createDeveloper(developer,taxable);
         if(savedDeveloper == null){
-
+            return new DeveloperResponse(null,"Developer with given experience is not valid",400);
         }
+        if(developers.containsKey(developer.getId())){
+            return new DeveloperResponse(null,"Developer with given id already exist: "+developer.getId(),400);
+        }
+
+        if(!DeveloperValidation.isDeveloperValid(developer)){
+            return new DeveloperResponse(null,"Developer credentials are not valid",400);
+        }
+
         developers.put(developer.getId(),savedDeveloper);
-        return developers.get(developer.getId());
+        return new DeveloperResponse(developers.get(developer.getId()),"Success",201);
     }
 
     @PutMapping("/{id}")
-    public Developer update(@PathVariable int id, @RequestBody Developer developer) {
+    public DeveloperResponse update(@PathVariable int id, @RequestBody Developer developer) {
         if(!developers.containsKey(id)) {
-
+            return new DeveloperResponse(null,"Developer with given id is not exist: "+developer.getId(),400);
         }
+
         developer.setId(id);
-        Developer updatedDeveloper = createDeveloper(developer);
+        Developer updatedDeveloper = DeveloperrFactory.createDeveloper(developer,taxable);
+
+        if(updatedDeveloper == null ){
+            return new DeveloperResponse(null, "Developer with given experience is not valid",400);
+        }
+        if(!DeveloperValidation.isDeveloperValid(developer)){
+            return new DeveloperResponse(null,"Developer credentials are not valid",400);
+        }
         developers.put(id,updatedDeveloper);
-        return developers.get(id);
+        return new DeveloperResponse(developers.get(id),"Success",200);
     }
 
     @DeleteMapping("/{id}")
-    public Developer delete(@PathVariable int id) {
+    public DeveloperResponse delete(@PathVariable int id) {
         if(!developers.containsKey(id)){
-
+            return new DeveloperResponse(null,"Developer with given id is not exist: "+id,400);
         }
         Developer developer = developers.get(id);
         developers.remove(id);
-        return developer;
+        return new DeveloperResponse(developer,"Success",200);
     }
 
-    private Developer createDeveloper(Developer developer) {
-        Developer savedDeveloper;
-        if(developer.getExperience().name().equalsIgnoreCase("junior")) {
-            savedDeveloper = new JuniorDeveloper(developer.getId(),developer.getName(),
-                    developer.getSalary() - developer.getSalary() * taxable.getSimpleTaxRate(),
-                    developer.getExperience());
-        } else if (developer.getExperience().name().equalsIgnoreCase("mid")) {
-            savedDeveloper = new MidDeveloper(developer.getId(),developer.getName(),
-                    developer.getSalary() - developer.getSalary() * taxable.getMiddleTaxRate(),
-                    developer.getExperience());
-        } else if (developer.getExperience().name().equalsIgnoreCase("senior")) {
-            savedDeveloper = new SeniorDeveloper(developer.getId(),developer.getName(),
-                    developer.getSalary() - developer.getSalary() * taxable.getUpperTaxRate(),
-                    developer.getExperience());
-        }else{
-            savedDeveloper = null;
-        }
-        return savedDeveloper;
 
-    }
 }
